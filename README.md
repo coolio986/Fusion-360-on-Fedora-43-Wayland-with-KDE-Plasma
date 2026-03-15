@@ -158,7 +158,22 @@ Now verify Steam created one of its normal directories:
 
 ~~~bash
 ls -ld ~/.steam/steam ~/.local/share/Steam 2>/dev/null
-~~~
+~~~PREFIX="$(cat ~/.config/fusion360-proton/prefix)"
+
+if [ -d "$HOME/.steam/steam" ]; then
+  STEAMROOT="$HOME/.steam/steam"
+else
+  STEAMROOT="$HOME/.local/share/Steam"
+fi
+
+PROTON="$STEAMROOT/compatibilitytools.d/GE-Proton10-32/proton"
+if [ ! -x "$PROTON" ]; then
+  PROTON="$(find "$STEAMROOT/compatibilitytools.d" -maxdepth 2 -path '*/GE-Proton*/proton' | sort -V | tail -n1)"
+fi
+
+env STEAM_COMPAT_DATA_PATH="$PREFIX" \
+    STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAMROOT" \
+    "$PROTON" run winecfg
 
 At least one of those paths should exist.
 
@@ -575,7 +590,106 @@ If `xdg-open` is sane and the URI handlers are registered, the callback should r
 
 ---
 
-# 16. Apply the Wine graphics fix
+# 16. Fix broken or hard-to-read fonts
+
+If Fusion launches but some UI text looks ugly, thin, jagged, or difficult to read, install additional Windows fonts and `gdiplus` into the **same existing Fusion Proton prefix**.
+
+## 16.1 Locate the correct existing Fusion prefix and Proton install
+
+Run:
+
+~~~bash
+FUSION_EXE="$(find ~/.local/share/Steam/steamapps/compatdata ~/.steam/steam/steamapps/compatdata -name Fusion360.exe 2>/dev/null | head -n1)"
+PREFIX="${FUSION_EXE%%/pfx/*}"
+
+if [ -d "$HOME/.steam/steam" ]; then
+  STEAMROOT="$HOME/.steam/steam"
+else
+  STEAMROOT="$HOME/.local/share/Steam"
+fi
+
+PROTON="$STEAMROOT/compatibilitytools.d/GE-Proton10-32"
+if [ ! -x "$PROTON/proton" ]; then
+  PROTON="$(dirname "$(find "$STEAMROOT/compatibilitytools.d" -maxdepth 2 -path '*/GE-Proton*/proton' | sort -V | tail -n1)")"
+fi
+
+echo "Using prefix: $PREFIX"
+echo "Using Proton: $PROTON"
+~~~
+
+You should see:
+
+- a real Fusion compatdata path under Steam
+- a real GE-Proton path
+
+## 16.2 Install Winetricks if it is not already installed
+
+Run:
+
+~~~bash
+sudo dnf install -y winetricks
+~~~
+
+## 16.3 Kill any leftover Wine / Proton processes for the Fusion prefix
+
+If Fusion or a Wine helper was left open, `winetricks` may block waiting for the prefix to become idle.
+
+Run:
+
+~~~bash
+env \
+  WINE="$PROTON/files/bin/wine" \
+  WINESERVER="$PROTON/files/bin/wineserver" \
+  WINEPREFIX="$PREFIX/pfx" \
+  "$PROTON/files/bin/wineserver" -k || true
+
+sleep 2
+
+pkill -f Fusion360.exe || true
+pkill -f AdskIdentityManager.exe || true
+pkill -f winetricks || true
+pkill -f wineserver || true
+sleep 2
+~~~
+
+If `winetricks` says it is waiting for `wineserver -w`, something from the Fusion prefix is still running.
+
+## 16.4 Install the additional fonts and gdiplus into the existing Fusion prefix
+
+Run:
+
+~~~bash
+env \
+  WINE="$PROTON/files/bin/wine" \
+  WINESERVER="$PROTON/files/bin/wineserver" \
+  WINEPREFIX="$PREFIX/pfx" \
+  winetricks -q allfonts gdiplus
+~~~
+
+This installs:
+
+- the broader Winetricks font collection
+- `gdiplus`
+
+Using the Proton-bundled `wine` and `wineserver` avoids the Wine version mismatch problems that happen when plain system Wine binaries try to touch a Proton-managed prefix.
+
+> This command can take a while.
+>
+> If it appears to pause, make sure it is not waiting on leftover Wine processes from the Fusion prefix.
+
+## 16.5 Launch Fusion again
+
+After the font install completes, launch Fusion normally:
+
+~~~bash
+~/.local/bin/fusion360-launch
+~~~
+
+At this point, the broken text should render correctly.
+
+---
+
+# 17. Apply the Wine graphics fix
 
 This was the setting combination that solved the bad modal dialog z-order problem on Fedora 43 + Plasma Wayland.
 
@@ -608,7 +722,7 @@ In `winecfg`, open the **Graphics** tab and set:
 
 This was the final working combination.
 
-# 17. Switch Fusion to OpenGL inside the app
+# 18. Switch Fusion to OpenGL inside the app
 
 Once Fusion is running:
 
@@ -620,7 +734,7 @@ Once Fusion is running:
 
 ---
 
-# 18. Daily-use launcher
+# 19. Daily-use launcher
 
 After installation is complete, launch Fusion with:
 
@@ -634,7 +748,7 @@ Do **not** keep launching the original installer through Steam once Fusion is in
 
 ---
 
-# 19. Quick validation checklist
+# 20. Quick validation checklist
 
 Run these commands:
 
@@ -662,7 +776,7 @@ Then confirm in the UI:
 
 ---
 
-# 20. Troubleshooting
+# 21. Troubleshooting
 
 ## A. The installer flashes and exits immediately
 
@@ -755,7 +869,7 @@ If it exists elsewhere under the same prefix, update the launcher logic or reins
 
 ---
 
-# 21. Summary of the one setting that mattered most
+# 22. Summary of the one setting that mattered most
 
 If you only remember one technical fix from this entire process, remember this:
 
@@ -771,7 +885,7 @@ The full working set was:
 
 ---
 
-# 22. Final launch command
+# 23. Final launch command
 
 Once setup is complete, this is the normal launch command:
 
@@ -781,7 +895,7 @@ Once setup is complete, this is the normal launch command:
 
 ---
 
-# 23. Optional cleanup
+# 24. Optional cleanup
 
 After Fusion is installed and working, you may want to remove the non-Steam installer shortcut from Steam to avoid launching the downloader again by accident.
 
@@ -789,7 +903,7 @@ You do **not** need the downloader entry anymore once Fusion is installed and yo
 
 ---
 
-# 24. Short version
+# 25. Short version
 
 If you need the shortest accurate summary of the whole process:
 
