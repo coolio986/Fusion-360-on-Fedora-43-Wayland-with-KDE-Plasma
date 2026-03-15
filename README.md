@@ -675,7 +675,7 @@ env \
   WINE="$PROTON/files/bin/wine" \
   WINESERVER="$PROTON/files/bin/wineserver" \
   WINEPREFIX="$PREFIX/pfx" \
-  winetricks -q allfonts gdiplus
+  winetricks -q allfonts gdiplus fontsmooth=rgb
 ~~~
 
 This installs:
