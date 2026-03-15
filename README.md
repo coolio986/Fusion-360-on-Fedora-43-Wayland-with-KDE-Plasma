@@ -66,6 +66,18 @@ By the end of this process, you will have:
   - **Emulate a virtual desktop** = **OFF**
 - Fusion configured to use **OpenGL**
 
+**Wine 10+ for tooling**
+
+Even though Fusion 360 itself runs on **GE-Proton10-32**, the setup and repair workflow assumes that **Wine 10 or newer** is available on the host for supporting tools and compatibility work.
+
+On Fedora 43, this requirement is satisfied by the current `wine` package, which is version **10.15-1.fc43** at the time of writing. Fedora 43 also provides a current `winetricks` package. :contentReference[oaicite:1]{index=1}
+
+Install these before continuing:
+
+~~~bash
+sudo dnf install -y wine winetricks
+~~~
+
 ---
 
 ## Known-good final configuration
